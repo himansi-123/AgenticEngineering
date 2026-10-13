@@ -1,0 +1,23 @@
+@AgenticEngineering.Api_HostAddress = http://127.0.0.1:5080
+
+GET {{AgenticEngineering.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+POST {{AgenticEngineering.Api_HostAddress}}/api/urls
+Content-Type: application/json
+
+{
+	"url": "https://example.com/path"
+}
+
+###
+
+POST {{AgenticEngineering.Api_HostAddress}}/api/scenarios/brownfield-analytics-defect/run
+Content-Length: 0
+
+###
+
+GET {{AgenticEngineering.Api_HostAddress}}/api/scenarios
+Accept: application/json
