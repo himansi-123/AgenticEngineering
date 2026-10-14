@@ -35,10 +35,16 @@ public sealed class SqliteShortUrlRepository(ShortUrlDbContext dbContext) : ISho
         CancellationToken cancellationToken)
     {
         var shortUrl = await dbContext.ShortUrls
+            .Include(item => item.Clicks)
             .SingleOrDefaultAsync(item => item.Code == code, cancellationToken);
         if (shortUrl is null)
         {
             return null;
+        }
+
+        if (shortUrl.IsExpired(clickedAtUtc))
+        {
+            return shortUrl;
         }
 
         shortUrl.RecordClick(clickedAtUtc);

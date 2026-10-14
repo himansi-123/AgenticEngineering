@@ -70,6 +70,67 @@ public sealed class DagWorkflowSchedulerTests
     }
 
     [Fact]
+    public async Task Scheduler_stops_after_configured_transient_retry_limit()
+    {
+        var attempts = 0;
+        var executor = new DelegateExecutor((_, _) =>
+        {
+            attempts++;
+            return Task.FromResult(new WorkflowAgentResult(
+                false, "still unavailable", [], [], [], ["still unavailable"], [], IsTransient: true));
+        });
+        var task = Definition(Guid.NewGuid(), WorkflowTaskType.TestingValidation);
+        var scheduler = new DagWorkflowScheduler(executor);
+
+        var result = await scheduler.ExecuteAsync(
+            Guid.NewGuid(), "requirement", [task],
+            new WorkflowSchedulerOptions(MaxRetries: 2, RetryBaseDelay: TimeSpan.Zero),
+            null,
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(3, attempts);
+        Assert.Equal(3, result.Tasks.Single().AttemptCount);
+        Assert.Equal(WorkflowTaskState.Failed, result.Tasks.Single().State);
+    }
+
+    [Fact]
+    public async Task Dependent_waits_for_transient_dependency_retry_before_being_skipped()
+    {
+        var validationAttempts = 0;
+        var dependentRan = false;
+        var validation = Definition(Guid.NewGuid(), WorkflowTaskType.TestingValidation);
+        var security = Definition(Guid.NewGuid(), WorkflowTaskType.SecurityReview, validation.Id);
+        var executor = new DelegateExecutor((context, _) =>
+        {
+            if (context.Task.Id == validation.Id && ++validationAttempts == 1)
+            {
+                return Task.FromResult(new WorkflowAgentResult(
+                    false, "transient", [], [], [], ["transient"], [], IsTransient: true));
+            }
+
+            if (context.Task.Id == security.Id)
+            {
+                dependentRan = true;
+            }
+
+            return Task.FromResult(Success(context.Task.Type.ToString()));
+        });
+        var scheduler = new DagWorkflowScheduler(executor);
+
+        var result = await scheduler.ExecuteAsync(
+            Guid.NewGuid(), "requirement", [validation, security],
+            new WorkflowSchedulerOptions(MaxConcurrency: 2, MaxRetries: 1, RetryBaseDelay: TimeSpan.Zero),
+            null,
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(2, validationAttempts);
+        Assert.True(dependentRan);
+        Assert.Equal(WorkflowTaskState.Succeeded, result.Tasks.Single(task => task.Id == security.Id).State);
+    }
+
+    [Fact]
     public async Task Permanent_failure_skips_only_its_dependents()
     {
         var failed = Definition(Guid.NewGuid(), WorkflowTaskType.Implementation);

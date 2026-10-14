@@ -9,8 +9,8 @@ public sealed class WorkflowScenariosController(IWorkflowService workflowService
 {
     private static readonly IReadOnlyList<WorkflowScenarioDto> Scenarios =
     [
-        new("greenfield-expiration", "greenfield", "Add configurable expiration to shortened URLs.", false),
-        new("brownfield-analytics-defect", "brownfield", "Fix an analytics-counting defect in the existing URL-shortener application.", true),
+        new("greenfield-expiration", "greenfield", "Add configurable URL expiration to shortened URLs. Expiration is optional when a link is created, must be later than creation, existing links never expire, and expired links return HTTP 410 without recording clicks.", false),
+        new("brownfield-analytics-defect", "brownfield", "Investigate whether click analytics miscounts persisted redirects; report only a defect reproduced by the persisted click data.", false),
         new("ambiguous-link-expiration", "ambiguous", "Make links expire automatically.", false)
     ];
 

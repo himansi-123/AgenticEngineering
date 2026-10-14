@@ -9,7 +9,8 @@ public enum WorkflowRunState
     Validating,
     Completed,
     Failed,
-    Cancelled
+    Cancelled,
+    AwaitingClarification
 }
 
 public enum WorkflowTaskState
@@ -21,7 +22,8 @@ public enum WorkflowTaskState
     Succeeded,
     Failed,
     Skipped,
-    Cancelled
+    Cancelled,
+    AwaitingClarification
 }
 
 public enum WorkflowTaskType

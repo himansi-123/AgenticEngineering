@@ -29,6 +29,63 @@ public sealed class WorkflowService(
         await TransitionRunAsync(run, WorkflowRunState.Planning, "Workflow plan created.", cancellationToken);
         await TransitionRunAsync(run, WorkflowRunState.Executing, "Deterministic workflow execution started.", cancellationToken);
 
+        return await ExecuteRunAsync(run, definitions, tasks, cancellationToken);
+    }
+
+    public async Task<WorkflowRunDto?> ResolveClarificationAsync(
+        Guid runId,
+        ResolveWorkflowClarificationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Response) || request.Response.Length > 4000)
+        {
+            throw new ArgumentException("Clarification response must contain between 1 and 4000 characters.", nameof(request));
+        }
+
+        var run = await repository.GetRunAsync(runId, cancellationToken);
+        if (run is null)
+        {
+            return null;
+        }
+
+        if (run.State != WorkflowRunState.AwaitingClarification)
+        {
+            throw new InvalidOperationException("This workflow is not awaiting clarification.");
+        }
+
+        var tasks = (await repository.GetTasksAsync(runId, cancellationToken)).ToArray();
+        var clarificationTask = tasks.Single(task =>
+            task.Type == WorkflowTaskType.Clarification && task.State == WorkflowTaskState.AwaitingClarification);
+        var previousResult = ReadResult(clarificationTask.OutputJson);
+        clarificationTask.SetOutput(JsonSerializer.Serialize(new WorkflowAgentResult(
+            true,
+            "Clarification response recorded; workflow resumed.",
+            previousResult?.ArtifactReferences ?? [],
+            [$"Clarification response: {request.Response.Trim()}"],
+            [],
+            [],
+            previousResult?.Decisions ?? []), JsonOptions));
+        clarificationTask.TransitionTo(WorkflowTaskState.Succeeded, DateTimeOffset.UtcNow);
+        await repository.SaveTaskTransitionAsync(clarificationTask, cancellationToken);
+
+        var definitions = tasks.Select(task => new WorkflowTaskDefinition(
+            task.Id,
+            task.Type,
+            task.Priority,
+            JsonSerializer.Deserialize<Guid[]>(task.DependenciesJson) ?? [],
+            JsonSerializer.Deserialize<string[]>(task.InputArtifactsJson) ?? [],
+            JsonSerializer.Deserialize<string[]>(task.OutputArtifactsJson) ?? [])).ToArray();
+        await TransitionRunAsync(run, WorkflowRunState.Executing, "Clarification was recorded; workflow execution resumed.", cancellationToken);
+        return await ExecuteRunAsync(run, definitions, tasks, cancellationToken);
+    }
+
+    private async Task<WorkflowRunDto> ExecuteRunAsync(
+        WorkflowRun run,
+        IReadOnlyCollection<WorkflowTaskDefinition> definitions,
+        IReadOnlyCollection<WorkflowTask> existingTasks,
+        CancellationToken cancellationToken)
+    {
+
         WorkflowScheduleResult schedule;
         try
         {
@@ -38,7 +95,8 @@ public sealed class WorkflowService(
                 definitions,
                 schedulerOptions,
                 repository.SaveTaskTransitionAsync,
-                cancellationToken);
+                cancellationToken,
+                existingTasks);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -50,6 +108,17 @@ public sealed class WorkflowService(
         {
             await TransitionRunAsync(run, WorkflowRunState.Cancelled, "Workflow safe-stopped after cancellation.", CancellationToken.None);
             return ToDto(run, null);
+        }
+
+        if (schedule.AwaitingClarification)
+        {
+            await TransitionRunAsync(run, WorkflowRunState.AwaitingClarification,
+                "Workflow paused until the unresolved requirement is clarified.", CancellationToken.None);
+            var clarificationSummary = schedule.Tasks
+                .Where(task => task.Type == WorkflowTaskType.Clarification)
+                .Select(task => ReadResult(task.OutputJson)?.Summary)
+                .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+            return ToDto(run, clarificationSummary);
         }
 
         await TransitionRunAsync(run, WorkflowRunState.Validating, "Workflow tasks reached a terminal state.", CancellationToken.None);

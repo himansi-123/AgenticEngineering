@@ -6,15 +6,15 @@ Run all current tests from the repository root:
 dotnet test .\AgenticEngineering.sln
 ```
 
-Unit tests exercise URL scheme/credential rejection and short-code collision retry. API integration tests run against `WebApplicationFactory` with a unique temporary SQLite database per fixture and check health, creation, metadata, 302 redirect, persisted click analytics, unsafe input, and missing codes. They make no external network requests.
+Unit tests exercise URL scheme/credential rejection, short-code collision retry, DAG state behavior, bounded transient retries, retry exhaustion, and the rule that dependents wait while a dependency is retrying. API integration tests run against `WebApplicationFactory` with a unique temporary SQLite database per fixture. They verify URL creation, persisted optional expiration, sequential and concurrent click counts/timestamps, 410 behavior after expiry without incrementing analytics, unsafe input, missing codes, workflow clarification pause/resume, rejection of unsupported implementation work, real brownfield analytics, and retry/audit persistence using an explicitly test-injected transient failure. They make no external network requests.
 
 ## Results
 
-On 2026-10-13, `dotnet build AgenticEngineering.sln --no-restore --verbosity minimal` succeeded with 0 warnings and 0 errors. `dotnet test AgenticEngineering.sln --no-restore --verbosity minimal` passed all 19 unit tests and 10 integration tests.
+On 2026-10-13, `dotnet build AgenticEngineering.sln --no-restore --verbosity minimal` succeeded with 0 warnings and 0 errors. The unit test project passed all 22 tests and the integration test project passed all 16 tests.
 
 ## Planned test coverage
 
-Workflow tests cover DAG validation/cycle rejection, legal state transitions, independent-task parallelism/dependency synchronization, bounded retries, timeout/cancellation, failure propagation, approval enforcement, persisted audit/metrics, and all three scenarios. Replanning/stale-artifact invalidation and rollback tests remain pending because these features are not implemented.
+Workflow tests cover DAG validation/cycle rejection, legal state transitions, independent-task parallelism/dependency synchronization, bounded retries, timeout/cancellation, failure propagation, approval enforcement, clarification gating/resume, persisted audit/metrics, and all three scenarios. Replanning/stale-artifact invalidation, general code application, restart recovery, and rollback tests remain pending because these features are not implemented.
 
 ## Metric definitions
 

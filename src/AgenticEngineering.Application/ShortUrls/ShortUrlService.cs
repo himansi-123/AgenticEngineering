@@ -12,17 +12,31 @@ public sealed class ShortUrlService(
 
     public async Task<ShortUrlDto> CreateAsync(string? originalUrl, CancellationToken cancellationToken)
     {
+        return await CreateAsync(originalUrl, null, cancellationToken);
+    }
+
+    public async Task<ShortUrlDto> CreateAsync(
+        string? originalUrl,
+        DateTimeOffset? expiresAtUtc,
+        CancellationToken cancellationToken)
+    {
         if (!IsSafeHttpUrl(originalUrl))
         {
             throw new InvalidDestinationException("URL must be an absolute HTTP or HTTPS URL no longer than 2048 characters and must not contain credentials.");
         }
 
+        var createdAtUtc = DateTimeOffset.UtcNow;
+        if (expiresAtUtc <= createdAtUtc)
+        {
+            throw new InvalidDestinationException("Expiration must be later than the current time.");
+        }
+
         for (var attempt = 0; attempt < MaximumCreateAttempts; attempt++)
         {
-            var shortUrl = new ShortUrl(codeGenerator.Generate(), originalUrl!, DateTimeOffset.UtcNow);
+            var shortUrl = new ShortUrl(codeGenerator.Generate(), originalUrl!, createdAtUtc, expiresAtUtc);
             if (await repository.TryCreateAsync(shortUrl, cancellationToken))
             {
-                return ToDto(shortUrl);
+                return ToDto(shortUrl, createdAtUtc);
             }
         }
 
@@ -32,13 +46,13 @@ public sealed class ShortUrlService(
     public async Task<ShortUrlDto?> GetAsync(string code, CancellationToken cancellationToken)
     {
         var shortUrl = await repository.GetAsync(code, cancellationToken);
-        return shortUrl is null ? null : ToDto(shortUrl);
+        return shortUrl is null ? null : ToDto(shortUrl, DateTimeOffset.UtcNow);
     }
 
     public async Task<ShortUrlDto?> RecordClickAsync(string code, CancellationToken cancellationToken)
     {
         var shortUrl = await repository.RecordClickAsync(code, DateTimeOffset.UtcNow, cancellationToken);
-        return shortUrl is null ? null : ToDto(shortUrl);
+        return shortUrl is null ? null : ToDto(shortUrl, DateTimeOffset.UtcNow);
     }
 
     public async Task<UrlAnalyticsDto?> GetAnalyticsAsync(string code, CancellationToken cancellationToken)
@@ -65,7 +79,7 @@ public sealed class ShortUrlService(
             && string.IsNullOrEmpty(uri.UserInfo);
     }
 
-    private static ShortUrlDto ToDto(ShortUrl shortUrl)
+    private static ShortUrlDto ToDto(ShortUrl shortUrl, DateTimeOffset nowUtc)
     {
         DateTimeOffset? lastClickedAtUtc = shortUrl.Clicks.Count == 0
             ? null
@@ -76,7 +90,9 @@ public sealed class ShortUrlService(
             shortUrl.OriginalUrl,
             shortUrl.CreatedAtUtc,
             shortUrl.Clicks.Count,
-            lastClickedAtUtc);
+            lastClickedAtUtc,
+            shortUrl.ExpiresAtUtc,
+            shortUrl.IsExpired(nowUtc));
     }
 }
 

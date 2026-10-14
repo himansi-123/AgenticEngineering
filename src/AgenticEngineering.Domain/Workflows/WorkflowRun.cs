@@ -38,8 +38,9 @@ public sealed class WorkflowRun
         {
             WorkflowRunState.Created => next is WorkflowRunState.Planning or WorkflowRunState.Failed or WorkflowRunState.Cancelled,
             WorkflowRunState.Planning => next is WorkflowRunState.Executing or WorkflowRunState.AwaitingApproval or WorkflowRunState.Failed or WorkflowRunState.Cancelled,
-            WorkflowRunState.Executing => next is WorkflowRunState.AwaitingApproval or WorkflowRunState.Validating or WorkflowRunState.Completed or WorkflowRunState.Failed or WorkflowRunState.Cancelled,
+            WorkflowRunState.Executing => next is WorkflowRunState.AwaitingApproval or WorkflowRunState.AwaitingClarification or WorkflowRunState.Validating or WorkflowRunState.Completed or WorkflowRunState.Failed or WorkflowRunState.Cancelled,
             WorkflowRunState.AwaitingApproval => next is WorkflowRunState.Executing or WorkflowRunState.Failed or WorkflowRunState.Cancelled,
+            WorkflowRunState.AwaitingClarification => next is WorkflowRunState.Executing or WorkflowRunState.Failed or WorkflowRunState.Cancelled,
             WorkflowRunState.Validating => next is WorkflowRunState.AwaitingApproval or WorkflowRunState.Completed or WorkflowRunState.Failed or WorkflowRunState.Cancelled,
             _ => false
         };

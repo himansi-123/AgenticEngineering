@@ -21,7 +21,7 @@ public static class DependencyInjection
         services.AddScoped<IShortUrlRepository, SqliteShortUrlRepository>();
         services.AddScoped<IShortUrlService, ShortUrlService>();
         services.AddSingleton<IShortCodeGenerator, RandomShortCodeGenerator>();
-        services.AddSingleton<IWorkflowTaskExecutor, RuleBasedWorkflowTaskExecutor>();
+        services.AddScoped<IWorkflowTaskExecutor, RuleBasedWorkflowTaskExecutor>();
         services.AddSingleton<WorkflowPlanFactory>();
         var maxConcurrency = int.TryParse(configuration["Workflow:MaxConcurrency"], out var configuredConcurrency)
             ? configuredConcurrency

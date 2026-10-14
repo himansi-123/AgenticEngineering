@@ -26,6 +26,27 @@ public sealed class WorkflowApprovalGateTests
     }
 
     [Fact]
+    public async Task Protected_action_does_not_run_after_rejection()
+    {
+        var approval = new WorkflowApprovalRequest(
+            Guid.NewGuid(), WorkflowProtectedAction.ApplyGeneratedCode, "Apply patch", true, true, DateTimeOffset.UtcNow);
+        approval.Decide(false, "reviewer", "Rejected", DateTimeOffset.UtcNow);
+        var gate = new WorkflowApprovalGate(new FakeApprovalRepository(approval));
+        var actionExecuted = false;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => gate.ExecuteAsync(
+            approval.Id,
+            _ =>
+            {
+                actionExecuted = true;
+                return Task.CompletedTask;
+            },
+            CancellationToken.None));
+
+        Assert.False(actionExecuted);
+    }
+
+    [Fact]
     public async Task Protected_action_runs_only_after_approval_and_required_checks()
     {
         var approval = new WorkflowApprovalRequest(

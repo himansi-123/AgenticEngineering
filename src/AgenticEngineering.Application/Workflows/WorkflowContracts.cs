@@ -4,6 +4,8 @@ namespace AgenticEngineering.Application.Workflows;
 
 public sealed record CreateWorkflowRequest(string Requirement);
 
+public sealed record ResolveWorkflowClarificationRequest(string Response);
+
 public sealed record WorkflowScenarioDto(string Id, string Kind, string Requirement, bool DemonstratesTransientFailure);
 
 public sealed record WorkflowRunDto(
@@ -72,6 +74,8 @@ public interface IWorkflowRepository
 public interface IWorkflowService
 {
     Task<WorkflowRunDto> CreateAndExecuteAsync(CreateWorkflowRequest request, CancellationToken cancellationToken);
+
+    Task<WorkflowRunDto?> ResolveClarificationAsync(Guid runId, ResolveWorkflowClarificationRequest request, CancellationToken cancellationToken);
 
     Task<WorkflowRunDto?> GetAsync(Guid runId, CancellationToken cancellationToken);
 

@@ -10,13 +10,15 @@ public sealed record WorkflowAgentResult(
     IReadOnlyList<string> Risks,
     IReadOnlyList<string> Errors,
     IReadOnlyList<string> Decisions,
-    bool IsTransient = false);
+    bool IsTransient = false,
+    bool RequiresClarification = false);
 
 public sealed record WorkflowTaskExecutionContext(
     Guid RunId,
     string OriginalRequirement,
     WorkflowTaskDefinition Task,
-    int Attempt);
+    int Attempt,
+    IReadOnlyList<WorkflowAgentResult>? PriorResults = null);
 
 public interface IWorkflowTaskExecutor
 {
@@ -62,4 +64,5 @@ public sealed record WorkflowSchedulerOptions(
 public sealed record WorkflowScheduleResult(
     IReadOnlyList<WorkflowTask> Tasks,
     bool Succeeded,
-    bool Cancelled);
+    bool Cancelled,
+    bool AwaitingClarification = false);

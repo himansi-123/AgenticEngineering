@@ -6,17 +6,19 @@ A local .NET 8 prototype for turning software requirements into reviewable engin
 
 - ASP.NET Core Web API with Swagger in Development and `GET /health`.
 - URL creation, unique short-code generation, URL metadata, redirects, and persisted click timestamps.
+- Optional per-link URL expiration persisted in SQLite; expired links return `410 Gone` and do not record clicks.
 - SQLite storage through EF Core. The database is created on startup with `EnsureCreated` for this prototype.
 - HTTP/HTTPS-only destination validation; URLs containing embedded credentials are rejected.
 - xUnit unit tests and API integration tests using isolated SQLite databases.
 - Persisted workflow runs, dependency graphs, task results, approvals, and audit events in SQLite.
-- DAG scheduling with bounded concurrency, dependency gating, retries, per-task timeouts, cancellation, and dependent-task skipping.
+- DAG scheduling with bounded concurrency, dependency gating, bounded retries, per-task timeouts, cancellation, clarification pauses, and dependent-task skipping.
 - Deterministic structured stages for analysis, clarification, decomposition, design, implementation planning, validation, documentation, security, release readiness, and summary.
-- Runnable greenfield, brownfield, and ambiguous scenarios, including one audited transient failure and retry.
+- Runnable greenfield, brownfield, and ambiguous scenarios with persisted URL behavior checks and clarification pause/resume; bounded retries are separately tested with an explicitly injected test failure.
+- Workflow execution is limited to explicitly registered in-process application capabilities; no arbitrary shell or filesystem execution is available.
 
 ## Important limitations
 
-The workflow implementation stage produces a plan only: it does not modify source files, invoke shell commands, or run repository tests. Approval requests and `WorkflowApprovalGate` are implemented, but no code-application, migration, or deployment action is connected to execute. Dynamic replanning/stale-output invalidation, rollback, automatic resumption after process restart, and interactive clarification remain unimplemented.
+There is no general-purpose workspace code-editing, shell, migration, or deployment executor. The expiration workflow uses an allowlisted URL application-service operation and validates persisted behavior; unsupported implementation requests fail rather than being reported as implemented. The brownfield scenario verifies persisted click analytics; no source-level counting defect was reproduced or fixed. Test-only failure injection exercises retry/audit behavior separately and does not claim an analytics defect. Approval requests and `WorkflowApprovalGate` are implemented, but no protected source-code or deployment side effect is connected. Dynamic replanning/stale-output invalidation, rollback, and automatic resumption after process restart remain unimplemented.
 
 ## Requirements
 
@@ -45,7 +47,7 @@ Swagger is available at `/swagger` in Development. The health endpoint is `/heal
 
 ## URL API
 
-- `POST /api/urls` with `{ "url": "https://example.com/path" }` returns `201 Created` and URL metadata.
+- `POST /api/urls` with `{ "url": "https://example.com/path", "expiresAtUtc": "2030-01-01T00:00:00Z" }` returns `201 Created` and URL metadata. `expiresAtUtc` is optional and must be in the future.
 - `GET /api/urls/{code}` returns metadata or `404`.
 - `GET /{code}` records a click timestamp and returns a `302` redirect, or `404`.
 - `GET /api/urls/{code}/analytics` returns the total and click timestamps, or `404`.
@@ -60,13 +62,14 @@ Use the actual URL printed by `dotnet run`; its port may differ from the example
 
 ## Workflow API
 
-- `POST /api/workflows` with `{ "requirement": "..." }` creates and synchronously executes a deterministic workflow.
+- `POST /api/workflows` with `{ "requirement": "..." }` creates and synchronously executes a bounded workflow; unresolved ambiguity returns `AwaitingClarification`, not success.
+- `POST /api/workflows/{runId}/clarifications` with `{ "response": "..." }` persists the response and resumes a paused workflow.
 - `GET /api/workflows/{runId}` returns state and summary; `/tasks`, `/audit`, and `/metrics` expose persisted execution details.
 - `GET /api/approvals` lists requests; `POST /api/approvals` requests approval after required validation/security stages pass.
 - `POST /api/approvals/{approvalId}/approve` and `/reject` persist reviewer decisions.
 - `GET /api/scenarios` lists reproducible scenarios; `POST /api/scenarios/{scenarioId}/run` executes one.
 
-An approval decision does not itself execute a protected operation; future action adapters must call the gate immediately before performing side effects.
+An approval decision does not itself execute a protected operation; future action adapters must call the gate immediately before performing side effects. Clarification responses are required before an ambiguous workflow proceeds to implementation.
 
 ## Solution layout
 
@@ -81,7 +84,7 @@ An approval decision does not itself execute a protected operation; future actio
 
 ## Current validation
 
-On 2026-10-13, `dotnet build AgenticEngineering.sln --no-restore --verbosity minimal` succeeded with 0 warnings and 0 errors. `dotnet test AgenticEngineering.sln --no-restore --verbosity minimal` passed all 19 unit tests and 10 integration tests.
+On 2026-10-13, `dotnet build AgenticEngineering.sln --no-restore --verbosity minimal` succeeded with 0 warnings and 0 errors. The unit test project passed all 22 tests and the integration test project passed all 16 tests.
 
 ## Security and limitations
 

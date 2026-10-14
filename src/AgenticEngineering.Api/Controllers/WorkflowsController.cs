@@ -30,6 +30,40 @@ public sealed class WorkflowsController(IWorkflowService workflowService) : Cont
         }
     }
 
+    [HttpPost("{runId:guid}/clarifications")]
+    [ProducesResponseType<WorkflowRunDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<WorkflowRunDto>> ResolveClarification(
+        Guid runId,
+        [FromBody] ResolveWorkflowClarificationRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var run = await workflowService.ResolveClarificationAsync(runId, request, cancellationToken);
+            return run is null ? NotFound() : Ok(run);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid clarification response",
+                Detail = exception.Message,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Workflow cannot be resumed",
+                Detail = exception.Message,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+    }
+
     [HttpGet("{runId:guid}")]
     [ProducesResponseType<WorkflowRunDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -3,14 +3,14 @@
     "id": "greenfield-expiration",
     "kind": "greenfield",
     "requirement": "Add configurable expiration to shortened URLs.",
-    "status": "runnable through POST /api/scenarios/greenfield-expiration/run; plan-only implementation"
+    "status": "runnable through POST /api/scenarios/greenfield-expiration/run; creates a persisted expiring URL and validates active/expired behavior"
   },
   {
     "id": "brownfield-analytics-defect",
     "kind": "brownfield",
-    "requirement": "Fix an analytics-counting defect in the existing URL-shortener application.",
-    "status": "runnable through POST /api/scenarios/brownfield-analytics-defect/run; plan-only implementation",
-    "controlledFailure": "One deterministic transient validation failure, then success on the configured retry; all attempts are persisted in audit history."
+    "requirement": "Investigate whether click analytics miscounts persisted redirects in the existing URL-shortener application.",
+    "status": "runnable through POST /api/scenarios/brownfield-analytics-defect/run; verifies persisted clicks and timestamps and does not claim an unobserved defect",
+    "finding": "Two persisted redirects are reported as two analytics events; no source-level counting defect was reproduced."
   },
   {
     "id": "ambiguous-link-expiration",
@@ -22,6 +22,6 @@
       "What should happen to existing links?",
       "What should a request for an expired link return?"
     ],
-    "status": "runnable through POST /api/scenarios/ambiguous-link-expiration/run; clarification questions are recorded, not prompted interactively"
+    "status": "runnable through POST /api/scenarios/ambiguous-link-expiration/run; pauses in AwaitingClarification until POST /api/workflows/{runId}/clarifications records a response"
   }
 ]

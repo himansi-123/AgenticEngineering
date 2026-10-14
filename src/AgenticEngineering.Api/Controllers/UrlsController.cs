@@ -16,7 +16,7 @@ public sealed class UrlsController(IShortUrlService shortUrlService) : Controlle
     {
         try
         {
-            var result = await shortUrlService.CreateAsync(request.Url, cancellationToken);
+            var result = await shortUrlService.CreateAsync(request.Url, request.ExpiresAtUtc, cancellationToken);
             return CreatedAtAction(nameof(Get), new { code = result.Code }, result);
         }
         catch (InvalidDestinationException exception)
@@ -54,4 +54,6 @@ public sealed class CreateShortUrlRequest
     [System.ComponentModel.DataAnnotations.Required]
     [System.ComponentModel.DataAnnotations.MaxLength(2048)]
     public string? Url { get; init; }
+
+    public DateTimeOffset? ExpiresAtUtc { get; init; }
 }

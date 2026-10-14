@@ -73,6 +73,7 @@ public sealed class SqliteWorkflowRepository(IDbContextFactory<ShortUrlDbContext
                 WorkflowTaskState.Skipped => "task.skipped",
                 WorkflowTaskState.Cancelled => "task.cancelled",
                 WorkflowTaskState.Ready when previous.State == WorkflowTaskState.Failed => "task.retry_scheduled",
+                WorkflowTaskState.AwaitingClarification => "workflow.clarification_requested",
                 WorkflowTaskState.AwaitingApproval => "approval.requested",
                 _ => "task.state_changed"
             };

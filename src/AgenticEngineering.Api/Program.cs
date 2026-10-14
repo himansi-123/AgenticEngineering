@@ -28,6 +28,14 @@ using (var scope = app.Services.CreateScope())
 {
     var database = scope.ServiceProvider.GetRequiredService<ShortUrlDbContext>();
     await database.Database.EnsureCreatedAsync();
+    var hasExpirationColumn = await database.Database
+        .SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM pragma_table_info('ShortUrls') WHERE name = 'ExpiresAtUtc'")
+        .SingleAsync();
+    if (hasExpirationColumn == 0)
+    {
+        await database.Database.ExecuteSqlRawAsync("ALTER TABLE ShortUrls ADD COLUMN ExpiresAtUtc TEXT NULL");
+    }
+
     await database.Database.ExecuteSqlRawAsync("""
         CREATE TABLE IF NOT EXISTS "WorkflowRuns" (
             "Id" TEXT NOT NULL CONSTRAINT "PK_WorkflowRuns" PRIMARY KEY,

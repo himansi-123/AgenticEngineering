@@ -10,6 +10,10 @@ public sealed class RedirectController(IShortUrlService shortUrlService) : Contr
     public async Task<IActionResult> RedirectShortUrl(string code, CancellationToken cancellationToken)
     {
         var shortUrl = await shortUrlService.RecordClickAsync(code, cancellationToken);
-        return shortUrl is null ? NotFound() : Redirect(shortUrl.OriginalUrl);
+        return shortUrl is null
+            ? NotFound()
+            : shortUrl.IsExpired
+                ? StatusCode(StatusCodes.Status410Gone)
+                : Redirect(shortUrl.OriginalUrl);
     }
 }

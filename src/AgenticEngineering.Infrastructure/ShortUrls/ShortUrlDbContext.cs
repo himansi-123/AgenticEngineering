@@ -25,6 +25,7 @@ public sealed class ShortUrlDbContext(DbContextOptions<ShortUrlDbContext> option
             entity.HasKey(shortUrl => shortUrl.Code);
             entity.Property(shortUrl => shortUrl.Code).HasMaxLength(32);
             entity.Property(shortUrl => shortUrl.OriginalUrl).HasMaxLength(2048).IsRequired();
+            entity.Property(shortUrl => shortUrl.ExpiresAtUtc);
             entity.HasMany(shortUrl => shortUrl.Clicks)
                 .WithOne()
                 .HasForeignKey(click => click.ShortUrlCode)

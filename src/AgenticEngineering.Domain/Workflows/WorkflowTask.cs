@@ -48,8 +48,9 @@ public sealed class WorkflowTask
         {
             WorkflowTaskState.Pending => next is WorkflowTaskState.Ready or WorkflowTaskState.Skipped or WorkflowTaskState.Cancelled,
             WorkflowTaskState.Ready => next is WorkflowTaskState.Running or WorkflowTaskState.Skipped or WorkflowTaskState.Cancelled,
-            WorkflowTaskState.Running => next is WorkflowTaskState.AwaitingApproval or WorkflowTaskState.Succeeded or WorkflowTaskState.Failed or WorkflowTaskState.Cancelled,
+            WorkflowTaskState.Running => next is WorkflowTaskState.AwaitingApproval or WorkflowTaskState.AwaitingClarification or WorkflowTaskState.Succeeded or WorkflowTaskState.Failed or WorkflowTaskState.Cancelled,
             WorkflowTaskState.AwaitingApproval => next is WorkflowTaskState.Ready or WorkflowTaskState.Failed or WorkflowTaskState.Cancelled,
+            WorkflowTaskState.AwaitingClarification => next is WorkflowTaskState.Succeeded or WorkflowTaskState.Failed or WorkflowTaskState.Cancelled,
             WorkflowTaskState.Failed => next is WorkflowTaskState.Ready or WorkflowTaskState.Skipped or WorkflowTaskState.Cancelled,
             _ => false
         };

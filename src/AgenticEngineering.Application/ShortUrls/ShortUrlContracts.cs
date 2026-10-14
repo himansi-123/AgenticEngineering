@@ -7,7 +7,9 @@ public sealed record ShortUrlDto(
     string OriginalUrl,
     DateTimeOffset CreatedAtUtc,
     long ClickCount,
-    DateTimeOffset? LastClickedAtUtc);
+    DateTimeOffset? LastClickedAtUtc,
+    DateTimeOffset? ExpiresAtUtc,
+    bool IsExpired);
 
 public sealed record UrlAnalyticsDto(
     string Code,
@@ -31,6 +33,8 @@ public interface IShortCodeGenerator
 public interface IShortUrlService
 {
     Task<ShortUrlDto> CreateAsync(string? originalUrl, CancellationToken cancellationToken);
+
+    Task<ShortUrlDto> CreateAsync(string? originalUrl, DateTimeOffset? expiresAtUtc, CancellationToken cancellationToken);
 
     Task<ShortUrlDto?> GetAsync(string code, CancellationToken cancellationToken);
 
